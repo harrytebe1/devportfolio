@@ -1,24 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminToast from '../../components/admin/AdminToast';
-
-// Dummy data
-const initialSkills = [
-  { id:1, name:'TypeScript', category:'language', level:'advanced' },
-  { id:2, name:'React', category:'framework', level:'advanced' },
-  { id:3, name:'Docker', category:'tool', level:'intermediate' },
-  { id:4, name:'Python', category:'language', level:'intermediate' },
-];
-
-const categoryLabel = { language:'Language', framework:'Framework', tool:'Tool' };
+import api from '../../lib/axios';
 
 const AdminSkills = () => {
-  const [skills, setSkills] = useState(initialSkills);
+  const [skills, setSkills] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [currentSkill, setCurrentSkill] = useState(null);
   
   // Form State
-  const [formData, setFormData] = useState({ name: '', category: 'language', level: 'advanced' });
+  const [formData, setFormData] = useState({ name: '', category: 'Frontend', level: 5 });
   const [formError, setFormError] = useState('');
   
   // Toast State
@@ -26,13 +18,29 @@ const AdminSkills = () => {
 
   const showToast = (message, type = 'success') => setToast({ show: true, message, type });
 
+  useEffect(() => {
+    fetchSkills();
+  }, []);
+
+  const fetchSkills = async () => {
+    try {
+      setIsLoading(true);
+      const res = await api.get('/skills');
+      setSkills(res.data.data);
+    } catch (error) {
+      showToast('Failed to load skills', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const openForm = (skill = null) => {
     if (skill) {
       setCurrentSkill(skill);
       setFormData({ name: skill.name, category: skill.category, level: skill.level });
     } else {
       setCurrentSkill(null);
-      setFormData({ name: '', category: 'language', level: 'advanced' });
+      setFormData({ name: '', category: 'Frontend', level: 5 });
     }
     setFormError('');
     setIsFormOpen(true);
@@ -47,33 +55,50 @@ const AdminSkills = () => {
 
   const closeConfirm = () => setIsConfirmOpen(false);
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!formData.name.trim()) {
       setFormError('Name is required.');
       return;
     }
 
-    const newSkillData = {
+    const apiPayload = {
       name: formData.name.trim(),
       category: formData.category,
-      level: formData.level
+      level: parseInt(formData.level, 10),
+      icon_name: currentSkill?.icon_name || formData.name.toLowerCase().replace(/[^a-z0-9]/g, '')
     };
 
-    if (currentSkill) {
-      setSkills(skills.map(s => s.id === currentSkill.id ? { ...s, ...newSkillData } : s));
-      showToast('Skill updated.');
-    } else {
-      setSkills([...skills, { id: Date.now(), ...newSkillData }]);
-      showToast('Skill added.');
+    try {
+      if (currentSkill) {
+        await api.put(`/skills/${currentSkill.id}`, apiPayload);
+        showToast('Skill updated.');
+      } else {
+        await api.post('/skills', apiPayload);
+        showToast('Skill added.');
+      }
+      fetchSkills();
+      closeForm();
+    } catch (error) {
+      showToast('Failed to save skill.', 'error');
     }
-    closeForm();
   };
 
-  const handleDelete = () => {
-    setSkills(skills.filter(s => s.id !== currentSkill.id));
-    showToast('Skill deleted.');
-    closeConfirm();
+  const handleDelete = async () => {
+    try {
+      await api.delete(`/skills/${currentSkill.id}`);
+      showToast('Skill deleted.');
+      fetchSkills();
+      closeConfirm();
+    } catch (error) {
+      showToast('Failed to delete skill.', 'error');
+    }
+  };
+
+  const getLevelLabel = (lvl) => {
+    if (lvl >= 4) return { label: 'Advanced', class: 'level-advanced' };
+    if (lvl >= 3) return { label: 'Intermediate', class: 'level-intermediate' };
+    return { label: 'Basic', class: 'level-basic' };
   };
 
   return (
@@ -92,11 +117,15 @@ const AdminSkills = () => {
             <tr><th>Name</th><th>Category</th><th>Level</th><th>Actions</th></tr>
           </thead>
           <tbody>
-            {skills.map(s => (
+            {isLoading ? (
+              <tr><td colSpan="4" style={{textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)'}}>Loading skills...</td></tr>
+            ) : skills.map(s => {
+              const lvl = getLevelLabel(s.level);
+              return (
               <tr key={s.id}>
                 <td>{s.name}</td>
-                <td><span className="pill">{categoryLabel[s.category]}</span></td>
-                <td><span className={`pill level-${s.level}`}>{s.level.charAt(0).toUpperCase() + s.level.slice(1)}</span></td>
+                <td><span className="pill">{s.category}</span></td>
+                <td><span className={`pill ${lvl.class}`}>{lvl.label}</span></td>
                 <td>
                   <div className="row-actions">
                     <button className="icon-btn" onClick={() => openForm(s)} aria-label="Edit">
@@ -108,10 +137,10 @@ const AdminSkills = () => {
                   </div>
                 </td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
-        {skills.length === 0 && (
+        {!isLoading && skills.length === 0 && (
           <div className="empty-state">No skills yet — click "Add Skill" to create your first one.</div>
         )}
       </div>
@@ -134,17 +163,21 @@ const AdminSkills = () => {
             <div className="field">
               <label htmlFor="category">Category</label>
               <select id="category" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
-                <option value="language">Language</option>
-                <option value="framework">Framework</option>
-                <option value="tool">Tool</option>
+                <option value="Frontend">Frontend</option>
+                <option value="Backend">Backend</option>
+                <option value="Database">Database</option>
+                <option value="Tools">Tools</option>
+                <option value="Other">Other</option>
               </select>
             </div>
             <div className="field">
-              <label htmlFor="level">Level</label>
-              <select id="level" value={formData.level} onChange={e => setFormData({...formData, level: e.target.value})}>
-                <option value="basic">Basic</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="advanced">Advanced</option>
+              <label htmlFor="level">Level (1-5)</label>
+              <select id="level" value={formData.level} onChange={e => setFormData({...formData, level: parseInt(e.target.value, 10)})}>
+                <option value={1}>1 - Basic</option>
+                <option value={2}>2 - Novice</option>
+                <option value={3}>3 - Intermediate</option>
+                <option value={4}>4 - Advanced</option>
+                <option value={5}>5 - Expert</option>
               </select>
             </div>
             <div className="modal-actions">

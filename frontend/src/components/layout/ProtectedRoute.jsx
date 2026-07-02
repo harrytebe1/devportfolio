@@ -2,8 +2,8 @@ import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 
 const ProtectedRoute = () => {
-  // Temporary auth check for Epic 4 UI construction
-  const token = localStorage.getItem('adminToken');
+  // Real auth check using JWT token
+  const token = localStorage.getItem('token');
   
   if (!token) {
     return <Navigate to="/admin/login" replace />;

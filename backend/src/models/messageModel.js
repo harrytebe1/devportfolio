@@ -33,10 +33,19 @@ const markAsRead = async (id) => {
   return result.rows[0];
 }
 
+const markAsUnread = async (id) => {
+  const result = await db.query(
+    'UPDATE messages SET is_read = false WHERE id = $1 RETURNING *',
+    [id]
+  );
+  return result.rows[0];
+};
+
 module.exports = {
   findAll,
   findById,
   create,
   remove,
-  markAsRead
+  markAsRead,
+  markAsUnread
 };

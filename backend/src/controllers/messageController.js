@@ -56,10 +56,24 @@ const markAsRead = async (req, res, next) => {
   }
 };
 
+const markAsUnread = async (req, res, next) => {
+  try {
+    const message = await messageModel.findById(req.params.id);
+    if (!message) {
+      return res.status(404).json({ success: false, message: 'Message not found' });
+    }
+    const updatedMessage = await messageModel.markAsUnread(req.params.id);
+    res.json({ success: true, data: updatedMessage });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getMessages,
   getMessageById,
   createMessage,
   deleteMessage,
-  markAsRead
+  markAsRead,
+  markAsUnread
 };

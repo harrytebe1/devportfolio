@@ -1,16 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminToast from '../../components/admin/AdminToast';
-
-// Dummy data
-const initialProjects = [
-  { id:1, title:'Nexus Analytics', description:'Real-time data visualization dashboard processing millions of events daily.', tech:['React','TypeScript','WebGL'], demoUrl:'#', repoUrl:'#' },
-  { id:2, title:'CloudSync API', description:'A distributed microservices architecture for seamless file synchronization.', tech:['Node.js','Go','Docker'], demoUrl:'#', repoUrl:'#' },
-  { id:3, title:'Aura Commerce', description:'Headless e-commerce storefront focusing on extreme performance.', tech:['Next.js','Supabase','Stripe'], demoUrl:'#', repoUrl:'#' },
-  { id:4, title:'DevEnvironment CLI', description:'A robust command-line tool for local dev environment setups.', tech:['Rust','Bash','WASM'], demoUrl:'#', repoUrl:'#' },
-];
+import api from '../../lib/axios';
 
 const AdminProjects = () => {
-  const [projects, setProjects] = useState(initialProjects);
+  const [projects, setProjects] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [currentProject, setCurrentProject] = useState(null);
@@ -24,15 +18,31 @@ const AdminProjects = () => {
 
   const showToast = (message, type = 'success') => setToast({ show: true, message, type });
 
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  const fetchProjects = async () => {
+    try {
+      setIsLoading(true);
+      const res = await api.get('/projects');
+      setProjects(res.data.data);
+    } catch (error) {
+      showToast('Failed to load projects', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const openForm = (project = null) => {
     if (project) {
       setCurrentProject(project);
       setFormData({
-        title: project.title,
-        description: project.description,
-        techStack: project.tech.join(', '),
-        demoUrl: project.demoUrl,
-        repoUrl: project.repoUrl
+        title: project.title || '',
+        description: project.description || '',
+        techStack: project.technologies ? project.technologies.join(', ') : '',
+        demoUrl: project.live_url || '',
+        repoUrl: project.repo_url || ''
       });
     } else {
       setCurrentProject(null);
@@ -51,35 +61,47 @@ const AdminProjects = () => {
 
   const closeConfirm = () => setIsConfirmOpen(false);
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!formData.title.trim()) {
       setFormError('Title is required.');
       return;
     }
 
-    const newProjectData = {
+    const apiPayload = {
       title: formData.title.trim(),
       description: formData.description.trim(),
-      tech: formData.techStack.split(',').map(s => s.trim()).filter(Boolean),
-      demoUrl: formData.demoUrl.trim() || '#',
-      repoUrl: formData.repoUrl.trim() || '#'
+      technologies: formData.techStack.split(',').map(s => s.trim()).filter(Boolean),
+      live_url: formData.demoUrl.trim(),
+      repo_url: formData.repoUrl.trim(),
+      image_url: currentProject?.image_url || 'https://images.unsplash.com/photo-1557821552-17105176677c?w=800&q=80', // default image
+      is_featured: currentProject?.is_featured || false
     };
 
-    if (currentProject) {
-      setProjects(projects.map(p => p.id === currentProject.id ? { ...p, ...newProjectData } : p));
-      showToast('Project updated.');
-    } else {
-      setProjects([...projects, { id: Date.now(), ...newProjectData }]);
-      showToast('Project added.');
+    try {
+      if (currentProject) {
+        await api.put(`/projects/${currentProject.id}`, apiPayload);
+        showToast('Project updated.');
+      } else {
+        await api.post('/projects', apiPayload);
+        showToast('Project added.');
+      }
+      fetchProjects();
+      closeForm();
+    } catch (error) {
+      showToast('Failed to save project.', 'error');
     }
-    closeForm();
   };
 
-  const handleDelete = () => {
-    setProjects(projects.filter(p => p.id !== currentProject.id));
-    showToast('Project deleted.');
-    closeConfirm();
+  const handleDelete = async () => {
+    try {
+      await api.delete(`/projects/${currentProject.id}`);
+      showToast('Project deleted.');
+      fetchProjects();
+      closeConfirm();
+    } catch (error) {
+      showToast('Failed to delete project.', 'error');
+    }
   };
 
   return (
@@ -98,23 +120,25 @@ const AdminProjects = () => {
             <tr><th>Project</th><th>Tech Stack</th><th>Links</th><th>Actions</th></tr>
           </thead>
           <tbody>
-            {projects.map(p => (
+            {isLoading ? (
+              <tr><td colSpan="4" style={{textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)'}}>Loading projects...</td></tr>
+            ) : projects.map(p => (
               <tr key={p.id}>
                 <td>
                   <div className="proj-cell">
-                    <div className="proj-thumb"></div>
+                    <div className="proj-thumb" style={{ backgroundImage: p.image_url ? `url(${p.image_url})` : 'none' }}></div>
                     <span className="proj-title">{p.title}</span>
                   </div>
                 </td>
                 <td>
                   <div className="tech-row">
-                    {p.tech.map((t, i) => <span key={i} className="pill">{t}</span>)}
+                    {p.technologies && p.technologies.map((t, i) => <span key={i} className="pill">{t}</span>)}
                   </div>
                 </td>
                 <td>
                   <div className="tech-row">
-                    <a href={p.demoUrl} className="pill" target="_blank" rel="noreferrer">Demo</a>
-                    <a href={p.repoUrl} className="pill" target="_blank" rel="noreferrer">Repo</a>
+                    {p.live_url && <a href={p.live_url} className="pill" target="_blank" rel="noreferrer">Demo</a>}
+                    {p.repo_url && <a href={p.repo_url} className="pill" target="_blank" rel="noreferrer">Repo</a>}
                   </div>
                 </td>
                 <td>
@@ -131,7 +155,7 @@ const AdminProjects = () => {
             ))}
           </tbody>
         </table>
-        {projects.length === 0 && (
+        {!isLoading && projects.length === 0 && (
           <div className="empty-state">No projects yet — click "Add Project" to create your first one.</div>
         )}
       </div>

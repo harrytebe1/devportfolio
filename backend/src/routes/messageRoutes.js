@@ -20,6 +20,7 @@ router.post(
 router.get('/', verifyToken, messageController.getMessages);
 router.get('/:id', verifyToken, messageController.getMessageById);
 router.put('/:id/read', verifyToken, messageController.markAsRead);
+router.put('/:id/unread', verifyToken, messageController.markAsUnread);
 router.delete('/:id', verifyToken, messageController.deleteMessage);
 
 module.exports = router;

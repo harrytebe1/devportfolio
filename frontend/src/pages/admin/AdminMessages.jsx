@@ -1,14 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminToast from '../../components/admin/AdminToast';
-
-const initialMessages = [
-  { id:1, name:'Sarah Jenkins', email:'sarah.j@example.com', date:'Oct 24, 2023', subject:'Freelance Opportunity', message:"Hi, I saw your portfolio and was really impressed by your recent projects. We are currently looking for a frontend developer to help us revamp our company website. Would you be open to discussing a potential freelance engagement?\n\nLooking forward to hearing from you,\nSarah", read:false },
-  { id:2, name:'David Chen', email:'d.chen@startup.io', date:'Oct 22, 2023', subject:'Question about your React architecture', message:"Hello! I was browsing through your open-source repositories and had a quick question about how you structured the state management in the E-commerce project. Did you use Redux or just Context API? It looks very clean.\n\nThanks,\nDavid", read:false },
-  { id:3, name:'Emma Wilson', email:'ewilson@agency.com', date:'Oct 18, 2023', subject:'Collaboration on upcoming project', message:"Hey there, our agency is looking for a technical partner for an upcoming client project involving WebGL and React. Your portfolio seems like a perfect fit. Let me know if you have bandwidth next month for a quick chat.\n\nBest,\nEmma", read:true },
-];
+import api from '../../lib/axios';
 
 const AdminMessages = () => {
-  const [messages, setMessages] = useState(initialMessages);
+  const [messages, setMessages] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [openMsgId, setOpenMsgId] = useState(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [msgToDelete, setMsgToDelete] = useState(null);
@@ -16,20 +12,48 @@ const AdminMessages = () => {
 
   const showToast = (message, type = 'success') => setToast({ show: true, message, type });
 
-  const toggleMessage = (id) => {
+  useEffect(() => {
+    fetchMessages();
+  }, []);
+
+  const fetchMessages = async () => {
+    try {
+      setIsLoading(true);
+      const res = await api.get('/messages');
+      setMessages(res.data.data);
+    } catch (error) {
+      showToast('Failed to load messages', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleMessage = async (id, isRead) => {
     if (openMsgId === id) {
       setOpenMsgId(null);
     } else {
       setOpenMsgId(id);
-      setMessages(messages.map(m => m.id === id ? { ...m, read: true } : m));
+      if (!isRead) {
+        try {
+          await api.put(`/messages/${id}/read`);
+          setMessages(messages.map(m => m.id === id ? { ...m, is_read: true } : m));
+        } catch (error) {
+          console.error('Failed to mark as read');
+        }
+      }
     }
   };
 
-  const markAsUnread = (e, id) => {
+  const markAsUnread = async (e, id) => {
     e.stopPropagation();
-    setMessages(messages.map(m => m.id === id ? { ...m, read: false } : m));
-    setOpenMsgId(null);
-    showToast('Marked as unread.', 'info');
+    try {
+      await api.put(`/messages/${id}/unread`);
+      setMessages(messages.map(m => m.id === id ? { ...m, is_read: false } : m));
+      setOpenMsgId(null);
+      showToast('Marked as unread.', 'info');
+    } catch (error) {
+      showToast('Failed to mark as unread.', 'error');
+    }
   };
 
   const confirmDelete = (e, id) => {
@@ -38,11 +62,16 @@ const AdminMessages = () => {
     setIsConfirmOpen(true);
   };
 
-  const handleDelete = () => {
-    setMessages(messages.filter(m => m.id !== msgToDelete));
-    if (openMsgId === msgToDelete) setOpenMsgId(null);
-    showToast('Message deleted.');
-    setIsConfirmOpen(false);
+  const handleDelete = async () => {
+    try {
+      await api.delete(`/messages/${msgToDelete}`);
+      setMessages(messages.filter(m => m.id !== msgToDelete));
+      if (openMsgId === msgToDelete) setOpenMsgId(null);
+      showToast('Message deleted.');
+      setIsConfirmOpen(false);
+    } catch (error) {
+      showToast('Failed to delete message.', 'error');
+    }
   };
 
   return (
@@ -55,22 +84,24 @@ const AdminMessages = () => {
       </div>
 
       <div className="message-list">
-        {messages.map(msg => (
+        {isLoading ? (
+          <div style={{textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)'}}>Loading messages...</div>
+        ) : messages.map(msg => (
           <div key={msg.id} className={`message-row ${openMsgId === msg.id ? 'open' : ''}`}>
-            <div className="message-summary" onClick={() => toggleMessage(msg.id)}>
-              <div className={`unread-dot ${msg.read ? 'hidden' : ''}`}></div>
+            <div className="message-summary" onClick={() => toggleMessage(msg.id, msg.is_read)}>
+              <div className={`unread-dot ${msg.is_read ? 'hidden' : ''}`}></div>
               <div className="msg-from">
                 <div className="name">{msg.name}</div>
                 <div className="email">{msg.email}</div>
               </div>
-              <div className="msg-preview">{msg.subject}</div>
-              <div className="msg-date">{msg.date}</div>
+              <div className="msg-preview">{msg.message.substring(0, 50)}...</div>
+              <div className="msg-date">{new Date(msg.created_at).toLocaleDateString()}</div>
               <svg className="chevron" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </div>
             
             <div className="message-detail">
               <div className="message-detail-inner">
-                <p>{msg.message}</p>
+                <p style={{ whiteSpace: 'pre-wrap' }}>{msg.message}</p>
                 <div className="message-detail-actions">
                   <button className="btn btn-secondary" onClick={(e) => markAsUnread(e, msg.id)}>Mark as Unread</button>
                   <button className="btn btn-danger" onClick={(e) => confirmDelete(e, msg.id)}>Delete Message</button>
@@ -80,7 +111,7 @@ const AdminMessages = () => {
           </div>
         ))}
 
-        {messages.length === 0 && (
+        {!isLoading && messages.length === 0 && (
           <div className="empty-state">No messages right now. Inbox zero!</div>
         )}
       </div>
