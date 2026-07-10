@@ -11,6 +11,7 @@ const AdminProfile = () => {
     about_cv_url: '',
     about_image_url: '',
     contact_email: '',
+    contact_location: '',
     contact_github: '',
     contact_linkedin: ''
   });
@@ -104,9 +105,16 @@ const AdminProfile = () => {
 
           <h3 style={{ marginTop: '2rem', marginBottom: '1.5rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Contact Information</h3>
 
-          <div className="field">
-            <label>Email Address</label>
-            <input type="email" name="contact_email" value={formData.contact_email} onChange={handleChange} />
+          <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="field">
+              <label>Email Address</label>
+              <input type="email" name="contact_email" value={formData.contact_email} onChange={handleChange} />
+            </div>
+            
+            <div className="field">
+              <label>Location</label>
+              <input type="text" name="contact_location" value={formData.contact_location} onChange={handleChange} placeholder="e.g. Jakarta, Indonesia" />
+            </div>
           </div>
 
           <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>

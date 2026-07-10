@@ -27,6 +27,7 @@ const ContactSection = () => {
   }, []);
 
   const email = settings?.contact_email || 'hello@devportfolio.com';
+  const location = settings?.contact_location || 'Jakarta, Indonesia (Remote)';
   const github = settings?.contact_github || '#';
   const linkedin = settings?.contact_linkedin || '#';
 
@@ -84,7 +85,7 @@ const ContactSection = () => {
               </a>
               <div className="info-link" style={{ cursor: 'default' }}>
                 <MapPin size={18} />
-                <span>Jakarta, Indonesia (Remote)</span>
+                <span>{location}</span>
               </div>
               <a href={github} target="_blank" rel="noopener noreferrer" className="info-link">
                 <Github size={18} />
