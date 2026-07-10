@@ -10,7 +10,7 @@ const AdminProjects = () => {
   const [currentProject, setCurrentProject] = useState(null);
   
   // Form State
-  const [formData, setFormData] = useState({ title: '', description: '', techStack: '', demoUrl: '', repoUrl: '' });
+  const [formData, setFormData] = useState({ title: '', description: '', techStack: '', demoUrl: '', repoUrl: '', isFeatured: true });
   const [formError, setFormError] = useState('');
   
   // Toast State
@@ -42,11 +42,12 @@ const AdminProjects = () => {
         description: project.description || '',
         techStack: project.technologies ? project.technologies.join(', ') : '',
         demoUrl: project.live_url || '',
-        repoUrl: project.repo_url || ''
+        repoUrl: project.repo_url || '',
+        isFeatured: project.is_featured === undefined ? true : project.is_featured
       });
     } else {
       setCurrentProject(null);
-      setFormData({ title: '', description: '', techStack: '', demoUrl: '', repoUrl: '' });
+      setFormData({ title: '', description: '', techStack: '', demoUrl: '', repoUrl: '', isFeatured: true });
     }
     setFormError('');
     setIsFormOpen(true);
@@ -75,7 +76,7 @@ const AdminProjects = () => {
       live_url: formData.demoUrl.trim(),
       repo_url: formData.repoUrl.trim(),
       image_url: currentProject?.image_url || 'https://images.unsplash.com/photo-1557821552-17105176677c?w=800&q=80', // default image
-      is_featured: currentProject?.is_featured || false
+      is_featured: formData.isFeatured
     };
 
     try {
@@ -191,6 +192,10 @@ const AdminProjects = () => {
             <div className="field">
               <label htmlFor="repoUrl">Repo URL</label>
               <input type="text" id="repoUrl" value={formData.repoUrl} onChange={e => setFormData({...formData, repoUrl: e.target.value})} placeholder="https://github.com/..." />
+            </div>
+            <div className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem' }}>
+              <input type="checkbox" id="isFeatured" checked={formData.isFeatured} onChange={e => setFormData({...formData, isFeatured: e.target.checked})} style={{ width: 'auto' }} />
+              <label htmlFor="isFeatured" style={{ marginBottom: 0 }}>Show on Projects Page (Featured)</label>
             </div>
             <div className="modal-actions">
               <button type="button" className="btn btn-secondary" onClick={closeForm}>Cancel</button>
