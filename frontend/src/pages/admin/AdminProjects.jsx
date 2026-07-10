@@ -10,7 +10,7 @@ const AdminProjects = () => {
   const [currentProject, setCurrentProject] = useState(null);
   
   // Form State
-  const [formData, setFormData] = useState({ title: '', description: '', techStack: '', demoUrl: '', repoUrl: '', isFeatured: true });
+  const [formData, setFormData] = useState({ title: '', description: '', techStack: '', demoUrl: '', repoUrl: '', imageUrl: '', isFeatured: true });
   const [formError, setFormError] = useState('');
   
   // Toast State
@@ -43,11 +43,12 @@ const AdminProjects = () => {
         techStack: project.technologies ? project.technologies.join(', ') : '',
         demoUrl: project.live_url || '',
         repoUrl: project.repo_url || '',
+        imageUrl: project.image_url || '',
         isFeatured: project.is_featured === undefined ? true : project.is_featured
       });
     } else {
       setCurrentProject(null);
-      setFormData({ title: '', description: '', techStack: '', demoUrl: '', repoUrl: '', isFeatured: true });
+      setFormData({ title: '', description: '', techStack: '', demoUrl: '', repoUrl: '', imageUrl: '', isFeatured: true });
     }
     setFormError('');
     setIsFormOpen(true);
@@ -75,7 +76,7 @@ const AdminProjects = () => {
       technologies: formData.techStack.split(',').map(s => s.trim()).filter(Boolean),
       live_url: formData.demoUrl.trim(),
       repo_url: formData.repoUrl.trim(),
-      image_url: currentProject?.image_url || 'https://images.unsplash.com/photo-1557821552-17105176677c?w=800&q=80', // default image
+      image_url: formData.imageUrl.trim() || 'https://images.unsplash.com/photo-1557821552-17105176677c?w=800&q=80', // fallback default
       is_featured: formData.isFeatured
     };
 
@@ -192,6 +193,10 @@ const AdminProjects = () => {
             <div className="field">
               <label htmlFor="repoUrl">Repo URL</label>
               <input type="text" id="repoUrl" value={formData.repoUrl} onChange={e => setFormData({...formData, repoUrl: e.target.value})} placeholder="https://github.com/..." />
+            </div>
+            <div className="field">
+              <label htmlFor="imageUrl">Image URL (Thumbnail)</label>
+              <input type="text" id="imageUrl" value={formData.imageUrl} onChange={e => setFormData({...formData, imageUrl: e.target.value})} placeholder="https://.../image.png (Optional)" />
             </div>
             <div className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem' }}>
               <input type="checkbox" id="isFeatured" checked={formData.isFeatured} onChange={e => setFormData({...formData, isFeatured: e.target.checked})} style={{ width: 'auto' }} />
