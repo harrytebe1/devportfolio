@@ -4,9 +4,9 @@ const {
   getSettings,
   updateSettings,
 } = require('../controllers/settingController');
-const { protect } = require('../middlewares/authMiddleware');
+const { verifyToken } = require('../middlewares/authMiddleware');
 
 router.get('/', getSettings);
-router.post('/', protect, updateSettings);
+router.post('/', verifyToken, updateSettings);
 
 module.exports = router;
